@@ -18,9 +18,13 @@ import {
   Unlink,
   Wifi,
 } from "lucide-react";
+
 import { QRCodeSVG } from "qrcode.react";
+
 import Image from "next/image";
+
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+
 import type { ShareRoom } from "@/lib/share-store";
 
 type SyncState = "idle" | "loading" | "saving" | "saved" | "error";
@@ -72,7 +76,10 @@ function formatDateTime(value: string) {
 }
 
 function formatRelativeTime(value: string) {
-  const seconds = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000));
+  const seconds = Math.max(
+    0,
+    Math.round((Date.now() - new Date(value).getTime()) / 1000),
+  );
 
   if (seconds < 60) {
     return "just now";
@@ -192,14 +199,18 @@ export function ShareCenterApp() {
       lines: draft ? draft.split(/\r\n|\r|\n/).length : 0,
       clips: room?.clips.length ?? 0,
       devices: room?.devices.length ?? 0,
-      updatedAt: room?.updatedAt ? formatDateTime(room.updatedAt) : "Not synced yet",
+      updatedAt: room?.updatedAt
+        ? formatDateTime(room.updatedAt)
+        : "Not synced yet",
     };
   }, [draft, room]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const roomFromUrl = cleanRoomCode(params.get("room") ?? "");
-    const storedRoom = cleanRoomCode(localStorage.getItem(LOCAL_ROOM_KEY) ?? "");
+    const storedRoom = cleanRoomCode(
+      localStorage.getItem(LOCAL_ROOM_KEY) ?? "",
+    );
     const nextRoom = roomFromUrl || storedRoom || createRoomCode();
     const nextDevice = ensureLocalDevice();
 
@@ -309,7 +320,11 @@ export function ShareCenterApp() {
       } catch (error) {
         if (isActive) {
           setSyncState("error");
-          setNotice(error instanceof Error ? error.message : "Could not link this device.");
+          setNotice(
+            error instanceof Error
+              ? error.message
+              : "Could not link this device.",
+          );
         }
       }
     }
@@ -527,10 +542,10 @@ export function ShareCenterApp() {
   }[syncState];
 
   return (
-    <main className="app-shell min-h-screen overflow-hidden text-base-content">
+    <main className="min-h-screen overflow-hidden">
       <section className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
         <header className="navbar min-h-16 px-0">
-          <div className="flex-1 gap-3">
+          <div className="flex-1 flex items-center gap-3">
             <Image
               alt="Share Center"
               className="h-11 w-11 rounded-lg shadow-sm"
@@ -540,7 +555,9 @@ export function ShareCenterApp() {
             />
             <div>
               <p className="font-pixel text-lg leading-5">Share Center</p>
-              <p className="text-xs text-base-content/55">Text handoff for phone and desktop</p>
+              <p className="text-xs text-base-content/55">
+                Text handoff for phone and desktop
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -560,10 +577,10 @@ export function ShareCenterApp() {
           </div>
         </header>
 
-        <section className="soft-panel mb-4 overflow-hidden rounded-lg border border-base-300 bg-base-100">
+        <section className="my-4 overflow-hidden rounded-lg border border-base-300 bg-base-100">
           <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_390px]">
             <div className="p-5 sm:p-7">
-              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="flex flex-col justify-between">
                 <div>
                   <h1 className="font-pixel max-w-3xl text-4xl leading-tight tracking-normal md:text-6xl">
                     Shared clipboard.
@@ -573,7 +590,7 @@ export function ShareCenterApp() {
                     that usually get trapped on the wrong device.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2 md:justify-end">
+                <div className="grid grid-cols-2 gap-2 mt-10">
                   <button
                     className="btn btn-primary"
                     type="button"
@@ -583,7 +600,11 @@ export function ShareCenterApp() {
                     <QrCode size={18} />
                     Show QR
                   </button>
-                  <button className="btn btn-outline" type="button" onClick={shareRoom}>
+                  <button
+                    className="btn btn-outline"
+                    type="button"
+                    onClick={shareRoom}
+                  >
                     <ArrowUpRight size={18} />
                     Share room
                   </button>
@@ -592,21 +613,31 @@ export function ShareCenterApp() {
             </div>
 
             <aside className="border-t border-base-300 bg-base-200 p-5 lg:border-l lg:border-t-0">
-              <p className="text-sm font-semibold text-base-content/70">Current room</p>
+              <p className="text-sm font-semibold text-base-content/70">
+                Current room
+              </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="badge badge-neutral text-base">{roomId || "starting"}</span>
+                <span className="badge badge-neutral text-base">
+                  {roomId || "starting"}
+                </span>
                 <button
                   className="btn btn-ghost btn-xs"
                   type="button"
                   onClick={() => copyText(roomId, "room-code")}
                   disabled={!roomId}
                 >
-                  {copied === "room-code" ? <Check size={15} /> : <Copy size={15} />}
+                  {copied === "room-code" ? (
+                    <Check size={15} />
+                  ) : (
+                    <Copy size={15} />
+                  )}
                   Copy code
                 </button>
               </div>
               <div className="mt-4 rounded-lg border border-base-300 bg-base-100 p-3">
-                <p className="truncate text-sm text-base-content/70">{shareUrl}</p>
+                <p className="truncate text-sm text-base-content/70">
+                  {shareUrl}
+                </p>
               </div>
               <div className="mt-3 flex items-center gap-2 rounded-lg border border-success/20 bg-success/10 p-3 text-sm text-success">
                 <ShieldCheck size={17} />
@@ -639,7 +670,9 @@ export function ShareCenterApp() {
             <div className="flex flex-col gap-4 border-b border-base-300 p-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-pixel text-2xl tracking-normal">Room text</h2>
+                  <h2 className="font-pixel text-2xl tracking-normal">
+                    Room text
+                  </h2>
                   <span className={`badge gap-1 ${syncBadgeClass}`}>
                     <Wifi size={13} />
                     {syncLabel}
@@ -657,7 +690,11 @@ export function ShareCenterApp() {
                   onClick={() => copyText(shareUrl, "room-link")}
                   disabled={!shareUrl}
                 >
-                  {copied === "room-link" ? <Check size={18} /> : <Link size={18} />}
+                  {copied === "room-link" ? (
+                    <Check size={18} />
+                  ) : (
+                    <Link size={18} />
+                  )}
                   Copy link
                 </button>
                 <button
@@ -682,11 +719,11 @@ export function ShareCenterApp() {
                     setDraft(event.target.value);
                   }}
                 />
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3">
                   <p className="text-sm text-base-content/60">
                     Last sync: {stats.updatedAt}
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <button
                       className="btn btn-outline"
                       type="button"
@@ -701,7 +738,11 @@ export function ShareCenterApp() {
                       onClick={() => copyText(draft, "draft")}
                       disabled={!draft}
                     >
-                      {copied === "draft" ? <Check size={18} /> : <Copy size={18} />}
+                      {copied === "draft" ? (
+                        <Check size={18} />
+                      ) : (
+                        <Copy size={18} />
+                      )}
                       Copy
                     </button>
                     <button
@@ -733,7 +774,9 @@ export function ShareCenterApp() {
                     <h2 className="font-semibold">Pair once</h2>
                   </div>
                   <ol className="mt-4 space-y-3 text-sm leading-6 text-base-content/70">
-                    <li>1. Scan the QR code or enter the code on a new device.</li>
+                    <li>
+                      1. Scan the QR code or enter the code on a new device.
+                    </li>
                     <li>2. That browser remembers this room locally.</li>
                     <li>3. Next time, just open the site and start pasting.</li>
                   </ol>
@@ -757,7 +800,9 @@ export function ShareCenterApp() {
                       id="room-code"
                       className="input join-item input-bordered min-w-0 flex-1"
                       value={joinCode}
-                      onChange={(event) => setJoinCode(cleanRoomCode(event.target.value))}
+                      onChange={(event) =>
+                        setJoinCode(cleanRoomCode(event.target.value))
+                      }
                       placeholder="desk-phone"
                     />
                     <button className="btn join-item btn-neutral" type="submit">
@@ -774,7 +819,9 @@ export function ShareCenterApp() {
                         <p className="truncate text-sm font-semibold">
                           {device?.name ?? "This device"}
                         </p>
-                        <p className="text-xs text-base-content/55">Linked browser</p>
+                        <p className="text-xs text-base-content/55">
+                          Linked browser
+                        </p>
                       </div>
                     </div>
                     <button
@@ -795,7 +842,9 @@ export function ShareCenterApp() {
                           key={roomDevice.id}
                         >
                           <span className="min-w-0 truncate">
-                            {roomDevice.id === device?.id ? "This browser" : roomDevice.name}
+                            {roomDevice.id === device?.id
+                              ? "This browser"
+                              : roomDevice.name}
                           </span>
                           <span className="shrink-0 text-xs text-base-content/50">
                             {formatRelativeTime(roomDevice.lastSeenAt)}
@@ -803,7 +852,9 @@ export function ShareCenterApp() {
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-base-content/55">Linking this browser...</p>
+                      <p className="text-sm text-base-content/55">
+                        Linking this browser...
+                      </p>
                     )}
                   </div>
                 </div>
@@ -837,7 +888,9 @@ export function ShareCenterApp() {
             <div className="flex items-center justify-between border-b border-base-300 p-4">
               <div>
                 <h2 className="font-bold">Room history</h2>
-                <p className="text-sm text-base-content/60">Reusable clips from this room</p>
+                <p className="text-sm text-base-content/60">
+                  Reusable clips from this room
+                </p>
               </div>
               <button
                 className="btn btn-ghost btn-sm"
@@ -858,7 +911,9 @@ export function ShareCenterApp() {
                     key={clip.id}
                   >
                     <div className="mb-3 flex items-center justify-between gap-2">
-                      <span className="badge badge-ghost">{formatTime(clip.createdAt)}</span>
+                      <span className="badge badge-ghost">
+                        {formatTime(clip.createdAt)}
+                      </span>
                       <div className="flex gap-1">
                         <button
                           className="btn btn-ghost btn-xs"
@@ -866,7 +921,11 @@ export function ShareCenterApp() {
                           onClick={() => copyText(clip.text, clip.id)}
                           title="Copy clip"
                         >
-                          {copied === clip.id ? <Check size={15} /> : <Clipboard size={15} />}
+                          {copied === clip.id ? (
+                            <Check size={15} />
+                          ) : (
+                            <Clipboard size={15} />
+                          )}
                         </button>
                         <button
                           className="btn btn-ghost btn-xs"
@@ -918,7 +977,11 @@ export function ShareCenterApp() {
                 <h3 className="text-xl font-bold">Scan to join</h3>
                 <p className="mt-1 text-sm text-base-content/60">{roomId}</p>
               </div>
-              <button className="btn btn-ghost btn-sm" type="button" onClick={() => setShowQr(false)}>
+              <button
+                className="btn btn-ghost btn-sm"
+                type="button"
+                onClick={() => setShowQr(false)}
+              >
                 Close
               </button>
             </div>
@@ -943,10 +1006,18 @@ export function ShareCenterApp() {
                 type="button"
                 onClick={() => copyText(shareUrl, "qr-link")}
               >
-                {copied === "qr-link" ? <Check size={18} /> : <Copy size={18} />}
+                {copied === "qr-link" ? (
+                  <Check size={18} />
+                ) : (
+                  <Copy size={18} />
+                )}
                 Copy link
               </button>
-              <button className="btn btn-primary" type="button" onClick={() => setShowQr(false)}>
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={() => setShowQr(false)}
+              >
                 Done
               </button>
             </div>

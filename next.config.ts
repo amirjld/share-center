@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  reactCompiler: true,
+	reactCompiler: true,
+	reactStrictMode: true,
+	poweredByHeader: false,
+	productionBrowserSourceMaps: false,
+	compress: true,
 };
 
 export default nextConfig;

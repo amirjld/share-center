@@ -26,10 +26,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      data-theme="sharecenter"
-      className={`${geistPixel.variable} h-full antialiased`}
+      data-theme="bumblebee"
+      className={geistPixel.className}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">
+      <body>
         {children}
         <Analytics />
       </body>
