@@ -10,11 +10,19 @@ export type ShareClip = {
   updatedAt: string;
 };
 
+export type ShareDevice = {
+  id: string;
+  name: string;
+  pairedAt: string;
+  lastSeenAt: string;
+};
+
 export type ShareRoom = {
   roomId: string;
   draft: string;
   updatedAt: string;
   clips: ShareClip[];
+  devices: ShareDevice[];
 };
 
 type StoreShape = {
@@ -23,6 +31,7 @@ type StoreShape = {
 
 const MAX_TEXT_LENGTH = 12_000;
 const MAX_CLIPS_PER_ROOM = 30;
+const MAX_DEVICES_PER_ROOM = 12;
 const STORE_DIR = path.join(process.cwd(), "storage");
 const STORE_PATH = path.join(STORE_DIR, "rooms.json");
 const ROOM_KEY_PREFIX = "share-center:room:";
@@ -63,6 +72,34 @@ function normalizeText(text: unknown) {
   return text.slice(0, MAX_TEXT_LENGTH);
 }
 
+function normalizeDeviceId(deviceId: unknown) {
+  if (typeof deviceId !== "string") {
+    throw new Error("Device id is required.");
+  }
+
+  const normalizedDeviceId = deviceId.trim().toLowerCase();
+
+  if (!/^[a-z0-9-]{8,80}$/.test(normalizedDeviceId)) {
+    throw new Error("Device id is invalid.");
+  }
+
+  return normalizedDeviceId;
+}
+
+function normalizeDeviceName(deviceName: unknown) {
+  if (typeof deviceName !== "string") {
+    throw new Error("Device name is required.");
+  }
+
+  return deviceName.trim().slice(0, 48) || "Linked device";
+}
+
+function withRoomDefaults(room: ShareRoom): ShareRoom {
+  room.clips ??= [];
+  room.devices ??= [];
+  return room;
+}
+
 async function readStore(): Promise<StoreShape> {
   try {
     const raw = await fs.readFile(STORE_PATH, "utf8");
@@ -90,9 +127,10 @@ function ensureRoom(store: StoreShape, roomId: string) {
     draft: "",
     updatedAt: now(),
     clips: [],
+    devices: [],
   };
 
-  return store.rooms[normalizedRoomId];
+  return withRoomDefaults(store.rooms[normalizedRoomId]);
 }
 
 function createRoom(roomId: string): ShareRoom {
@@ -101,6 +139,7 @@ function createRoom(roomId: string): ShareRoom {
     draft: "",
     updatedAt: now(),
     clips: [],
+    devices: [],
   };
 }
 
@@ -158,7 +197,7 @@ async function mutateRoom(
 
   const { key, roomId: normalizedRoomId } = getRoomKey(roomId);
   const existingRoom = await redis.get<ShareRoom>(key);
-  const room = existingRoom ?? createRoom(normalizedRoomId);
+  const room = existingRoom ? withRoomDefaults(existingRoom) : createRoom(normalizedRoomId);
   const nextRoom = await mutation(room);
 
   await redis.set(key, nextRoom);
@@ -194,6 +233,41 @@ export async function addClip(roomId: string, text: unknown) {
 
     room.clips = [clip, ...room.clips].slice(0, MAX_CLIPS_PER_ROOM);
     room.updatedAt = timestamp;
+    return room;
+  });
+}
+
+export async function registerDevice(
+  roomId: string,
+  device: {
+    id?: unknown;
+    name?: unknown;
+  },
+) {
+  const deviceId = normalizeDeviceId(device.id);
+  const deviceName = normalizeDeviceName(device.name);
+
+  return mutateRoom(roomId, (room) => {
+    const timestamp = now();
+    const existingDevice = room.devices.find(
+      (roomDevice) => roomDevice.id === deviceId,
+    );
+
+    if (existingDevice) {
+      existingDevice.name = deviceName;
+      existingDevice.lastSeenAt = timestamp;
+    } else {
+      room.devices = [
+        {
+          id: deviceId,
+          name: deviceName,
+          pairedAt: timestamp,
+          lastSeenAt: timestamp,
+        },
+        ...room.devices,
+      ].slice(0, MAX_DEVICES_PER_ROOM);
+    }
+
     return room;
   });
 }

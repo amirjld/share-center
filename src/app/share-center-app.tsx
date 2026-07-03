@@ -8,11 +8,14 @@ import {
   Eraser,
   History,
   Link,
+  MonitorSmartphone,
   Plus,
   QrCode,
   RefreshCw,
+  ShieldCheck,
   Sparkles,
   Trash2,
+  Unlink,
   Wifi,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -27,7 +30,13 @@ type RecentRoom = {
   lastOpenedAt: string;
 };
 
+type LocalDevice = {
+  id: string;
+  name: string;
+};
+
 const LOCAL_ROOM_KEY = "share-center-room";
+const LOCAL_DEVICE_KEY = "share-center-device";
 const LOCAL_RECENT_ROOMS_KEY = "share-center-recent-rooms";
 const MAX_RECENT_ROOMS = 5;
 
@@ -62,6 +71,75 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
+function formatRelativeTime(value: string) {
+  const seconds = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000));
+
+  if (seconds < 60) {
+    return "just now";
+  }
+
+  const minutes = Math.round(seconds / 60);
+
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+
+  const hours = Math.round(minutes / 60);
+
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+
+  return formatDateTime(value);
+}
+
+function createDeviceId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  return `device-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
+}
+
+function createDeviceName() {
+  const userAgent = navigator.userAgent.toLowerCase();
+
+  if (/iphone|android.*mobile|mobile/.test(userAgent)) {
+    return "Phone";
+  }
+
+  if (/ipad|tablet/.test(userAgent)) {
+    return "Tablet";
+  }
+
+  return "Desktop";
+}
+
+function readLocalDevice(): LocalDevice | null {
+  try {
+    const raw = localStorage.getItem(LOCAL_DEVICE_KEY);
+    return raw ? (JSON.parse(raw) as LocalDevice) : null;
+  } catch {
+    return null;
+  }
+}
+
+function ensureLocalDevice() {
+  const storedDevice = readLocalDevice();
+
+  if (storedDevice?.id && storedDevice.name) {
+    return storedDevice;
+  }
+
+  const nextDevice = {
+    id: createDeviceId(),
+    name: createDeviceName(),
+  };
+
+  localStorage.setItem(LOCAL_DEVICE_KEY, JSON.stringify(nextDevice));
+  return nextDevice;
+}
+
 function readRecentRooms() {
   try {
     const raw = localStorage.getItem(LOCAL_RECENT_ROOMS_KEY);
@@ -85,6 +163,7 @@ function rememberRoom(roomId: string) {
 export function ShareCenterApp() {
   const [roomId, setRoomId] = useState("");
   const [joinCode, setJoinCode] = useState("");
+  const [device, setDevice] = useState<LocalDevice | null>(null);
   const [draft, setDraft] = useState("");
   const [room, setRoom] = useState<ShareRoom | null>(null);
   const [syncState, setSyncState] = useState<SyncState>("idle");
@@ -112,6 +191,7 @@ export function ShareCenterApp() {
       words: wordCount,
       lines: draft ? draft.split(/\r\n|\r|\n/).length : 0,
       clips: room?.clips.length ?? 0,
+      devices: room?.devices.length ?? 0,
       updatedAt: room?.updatedAt ? formatDateTime(room.updatedAt) : "Not synced yet",
     };
   }, [draft, room]);
@@ -121,6 +201,7 @@ export function ShareCenterApp() {
     const roomFromUrl = cleanRoomCode(params.get("room") ?? "");
     const storedRoom = cleanRoomCode(localStorage.getItem(LOCAL_ROOM_KEY) ?? "");
     const nextRoom = roomFromUrl || storedRoom || createRoomCode();
+    const nextDevice = ensureLocalDevice();
 
     localStorage.setItem(LOCAL_ROOM_KEY, nextRoom);
 
@@ -129,6 +210,7 @@ export function ShareCenterApp() {
     }
 
     window.queueMicrotask(() => {
+      setDevice(nextDevice);
       setRoomId(nextRoom);
       setJoinCode(nextRoom);
       setRecentRooms(rememberRoom(nextRoom));
@@ -191,6 +273,55 @@ export function ShareCenterApp() {
       window.clearInterval(interval);
     };
   }, [roomId]);
+
+  useEffect(() => {
+    if (!roomId || !device) {
+      return;
+    }
+
+    let isActive = true;
+    const currentDevice = device;
+
+    async function registerCurrentDevice() {
+      try {
+        const response = await fetch(`/api/rooms/${roomId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            deviceId: currentDevice.id,
+            deviceName: currentDevice.name,
+          }),
+        });
+        const data = (await response.json()) as {
+          room?: ShareRoom;
+          error?: string;
+        };
+
+        if (!response.ok || !data.room) {
+          throw new Error(data.error ?? "Could not link this device.");
+        }
+
+        if (isActive) {
+          setRoom(data.room);
+        }
+      } catch (error) {
+        if (isActive) {
+          setSyncState("error");
+          setNotice(error instanceof Error ? error.message : "Could not link this device.");
+        }
+      }
+    }
+
+    registerCurrentDevice();
+    const interval = window.setInterval(registerCurrentDevice, 30_000);
+
+    return () => {
+      isActive = false;
+      window.clearInterval(interval);
+    };
+  }, [device, roomId]);
 
   useEffect(() => {
     if (!roomId || !didLoadRoom.current || !hasUnsavedDraft.current) {
@@ -256,6 +387,16 @@ export function ShareCenterApp() {
     setRoom(null);
     setDraft("");
     setShowQr(false);
+    setNotice("This device is now linked to the room.");
+  }
+
+  function forgetCurrentRoom() {
+    const nextRoom = createRoomCode();
+
+    localStorage.removeItem(LOCAL_ROOM_KEY);
+    localStorage.removeItem(LOCAL_RECENT_ROOMS_KEY);
+    switchRoom(nextRoom);
+    setNotice("This browser was disconnected. A fresh room is ready.");
   }
 
   function handleJoin(event: FormEvent<HTMLFormElement>) {
@@ -467,7 +608,11 @@ export function ShareCenterApp() {
               <div className="mt-4 rounded-lg border border-base-300 bg-base-100 p-3">
                 <p className="truncate text-sm text-base-content/70">{shareUrl}</p>
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+              <div className="mt-3 flex items-center gap-2 rounded-lg border border-success/20 bg-success/10 p-3 text-sm text-success">
+                <ShieldCheck size={17} />
+                <span>This browser opens this room automatically.</span>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-center sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-lg border border-base-300 bg-base-100 p-3">
                   <p className="font-pixel text-2xl">{stats.words}</p>
                   <p className="text-xs text-base-content/55">words</p>
@@ -479,6 +624,10 @@ export function ShareCenterApp() {
                 <div className="rounded-lg border border-base-300 bg-base-100 p-3">
                   <p className="font-pixel text-2xl">{stats.clips}</p>
                   <p className="text-xs text-base-content/55">clips</p>
+                </div>
+                <div className="rounded-lg border border-base-300 bg-base-100 p-3">
+                  <p className="font-pixel text-2xl">{stats.devices}</p>
+                  <p className="text-xs text-base-content/55">devices</p>
                 </div>
               </div>
             </aside>
@@ -581,12 +730,12 @@ export function ShareCenterApp() {
                 <div>
                   <div className="flex items-center gap-2">
                     <Sparkles className="text-secondary" size={18} />
-                    <h2 className="font-semibold">Handoff</h2>
+                    <h2 className="font-semibold">Pair once</h2>
                   </div>
                   <ol className="mt-4 space-y-3 text-sm leading-6 text-base-content/70">
-                    <li>1. Scan the QR code with your phone.</li>
-                    <li>2. Paste text here or use Paste.</li>
-                    <li>3. Copy it from the other device when Synced appears.</li>
+                    <li>1. Scan the QR code or enter the code on a new device.</li>
+                    <li>2. That browser remembers this room locally.</li>
+                    <li>3. Next time, just open the site and start pasting.</li>
                   </ol>
                 </div>
 
@@ -616,6 +765,48 @@ export function ShareCenterApp() {
                     </button>
                   </div>
                 </form>
+
+                <div className="rounded-lg border border-base-300 bg-base-100 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <MonitorSmartphone size={18} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">
+                          {device?.name ?? "This device"}
+                        </p>
+                        <p className="text-xs text-base-content/55">Linked browser</p>
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      type="button"
+                      onClick={forgetCurrentRoom}
+                      title="Disconnect this browser"
+                    >
+                      <Unlink size={15} />
+                    </button>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {room?.devices.length ? (
+                      room.devices.map((roomDevice) => (
+                        <div
+                          className="flex items-center justify-between gap-3 rounded-lg bg-base-200 px-3 py-2 text-sm"
+                          key={roomDevice.id}
+                        >
+                          <span className="min-w-0 truncate">
+                            {roomDevice.id === device?.id ? "This browser" : roomDevice.name}
+                          </span>
+                          <span className="shrink-0 text-xs text-base-content/50">
+                            {formatRelativeTime(roomDevice.lastSeenAt)}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-base-content/55">Linking this browser...</p>
+                    )}
+                  </div>
+                </div>
 
                 <div className="rounded-lg border border-base-300 bg-base-100 p-4">
                   <p className="text-sm font-semibold">Recent rooms</p>

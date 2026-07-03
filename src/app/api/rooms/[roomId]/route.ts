@@ -3,6 +3,7 @@ import {
   clearRoom,
   deleteClip,
   getRoom,
+  registerDevice,
   updateDraft,
 } from "@/lib/share-store";
 
@@ -52,6 +53,24 @@ export async function POST(request: Request, context: RoomContext) {
     const room = await addClip(roomId, body.text);
 
     return Response.json({ room }, { status: 201 });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function PUT(request: Request, context: RoomContext) {
+  try {
+    const { roomId } = await context.params;
+    const body = (await request.json()) as {
+      deviceId?: unknown;
+      deviceName?: unknown;
+    };
+    const room = await registerDevice(roomId, {
+      id: body.deviceId,
+      name: body.deviceName,
+    });
+
+    return Response.json({ room });
   } catch (error) {
     return errorResponse(error);
   }
