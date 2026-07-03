@@ -28,9 +28,26 @@ Rooms are identified by a short code in the URL:
 http://localhost:3000?room=desk-phone
 ```
 
-The app stores room data on the server in `storage/rooms.json`. This keeps the
-starter project simple and easy to self-host. The `storage/` folder is ignored
-by Git because it contains local runtime data.
+In local development, the app stores room data on the server in
+`storage/rooms.json`. This keeps the starter project simple and easy to run on
+your machine. The `storage/` folder is ignored by Git because it contains local
+runtime data.
+
+On Vercel, the app uses Redis because serverless function filesystems are not
+persistent writable storage. Add either a Vercel KV database or an Upstash Redis
+database, then set these environment variables:
+
+```bash
+KV_REST_API_URL=...
+KV_REST_API_TOKEN=...
+```
+
+The Upstash variable names are also supported:
+
+```bash
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
+```
 
 Room links should be treated as secrets. Anyone with a room link can read and
 edit that room.
@@ -78,7 +95,7 @@ bun run start
 - Expiring rooms and clips
 - File and image sharing
 - PWA install support
-- Redis/Postgres storage adapter for hosted deployments
+- Optional Postgres storage adapter for hosted deployments
 
 ## License
 
