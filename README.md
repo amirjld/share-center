@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Share Center
+
+Share Center is a no-login text handoff app for moving copied text between your
+phone, PC, tablet, or any browser.
+
+Open the same room link on two devices, paste text into the shared editor, and
+the other device receives it automatically. Useful clips can be saved into room
+history for later copying.
+
+## Features
+
+- No account, login, or registration
+- Private-by-link room codes
+- QR code room joining
+- Autosaving shared text editor
+- Room history for reusable clips
+- Recent rooms saved locally in the browser
+- Clipboard paste, copy room link, copy text, create room, join room, delete clips, clear room
+- Live room stats for words, lines, characters, and saved clips
+- Responsive DaisyUI interface
+- Bun-first Next.js setup
+
+## How syncing works
+
+Rooms are identified by a short code in the URL:
+
+```txt
+http://localhost:3000?room=desk-phone
+```
+
+The app stores room data on the server in `storage/rooms.json`. This keeps the
+starter project simple and easy to self-host. The `storage/` folder is ignored
+by Git because it contains local runtime data.
+
+Room links should be treated as secrets. Anyone with a room link can read and
+edit that room.
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Run the development server:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+bun run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Learn More
+Build for production:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+bun run build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Start the production server:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+bun run start
+```
 
-## Deploy on Vercel
+## Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS v4
+- DaisyUI
+- Bun
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Roadmap Ideas
+
+- Optional end-to-end encrypted rooms
+- Expiring rooms and clips
+- File and image sharing
+- PWA install support
+- Redis/Postgres storage adapter for hosted deployments
+
+## License
+
+MIT
